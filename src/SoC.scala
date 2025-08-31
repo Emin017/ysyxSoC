@@ -46,12 +46,12 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lsdram_apb = if (!Config.sdramUseAXI) Some(LazyModule(new APBSDRAM (sdramAddressSet))) else None
   val lsdram_axi = if ( Config.sdramUseAXI) Some(LazyModule(new AXI4SDRAM(sdramAddressSet))) else None
 
-  List(lspi.node, luart0.node, larchinfo.node).map(_ := apbxbar)
+  List(lspi, luart0, larchinfo).map(_.node := apbxbar)
   if (Config.isDstage) {
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
   } else if (Config.hasHomeWork) {
     val xbar2 = AXI4Xbar()
-    List(lpsram.get.node, lgpio.get.node, lkeyboard.get.node, lvga.get.node).map(_ := apbxbar)
+    List(lpsram, lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
     val lmrom = LazyModule(new AXI4MROM(AddrSpace(0x20000000, 0x1000)))
     val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x2000).head, false, true, 4, None, Nil, false)
@@ -92,25 +92,25 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     cpu.module.io_interrupt := intr_from_chipSlave
 
     val sdramBundle = if (Config.sdramUseAXI) lsdram_axi.get.module.sdram_bundle
-                      else                    lsdram_apb.get.module.sdram_bundle
+                      else                    lsdram_apb.get.module.extra
 
     // expose slave I/O interface as ports
-    val spi = IO(chiselTypeOf(lspi.module.spi_bundle))
-    val uart = IO(chiselTypeOf(luart0.module.uart))
+    val spi = IO(chiselTypeOf(lspi.module.extra))
+    val uart = IO(chiselTypeOf(luart0.module.extra))
     val sdram = IO(chiselTypeOf(sdramBundle))
-    uart <> luart0.module.uart
-    spi <> lspi.module.spi_bundle
+    uart <> luart0.module.extra
+    spi <> lspi.module.extra
     sdram <> sdramBundle
 
-    val psram = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lpsram.get.module.qspi_bundle)))   else None
-    val gpio  = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lgpio.get.module.gpio_bundle)))    else None
-    val ps2   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lkeyboard.get.module.ps2_bundle))) else None
-    val vga   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lvga.get.module.vga_bundle)))      else None
+    val psram = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lpsram.get.module.extra)))    else None
+    val gpio  = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lgpio.get.module.extra)))     else None
+    val ps2   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lkeyboard.get.module.extra))) else None
+    val vga   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lvga.get.module.extra)))      else None
     if (Config.hasHomeWork) {
-      psram.get <> lpsram.get.module.qspi_bundle
-      gpio.get <> lgpio.get.module.gpio_bundle
-      ps2.get <> lkeyboard.get.module.ps2_bundle
-      vga.get <> lvga.get.module.vga_bundle
+      psram.get <> lpsram.get.module.extra
+      gpio.get <> lgpio.get.module.extra
+      ps2.get <> lkeyboard.get.module.extra
+      vga.get <> lvga.get.module.extra
     }
   }
 }

@@ -95,24 +95,11 @@ class AXI4SDRAM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyMo
   }
 }
 
-class APBSDRAM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyModule {
-  val node = APBSlaveNode(Seq(APBSlavePortParameters(
-    Seq(APBSlaveParameters(
-      address       = address,
-      executable    = true,
-      supportsRead  = true,
-      supportsWrite = true)),
-    beatBytes  = 4)))
-
-  lazy val module = new Impl
-  class Impl extends LazyModuleImp(this) {
-    val (in, _) = node.in(0)
-    val sdram_bundle = IO(new SDRAMIO)
-
-    val msdram = Module(new sdram_top_apb)
-    msdram.io.clock := clock
-    msdram.io.reset := reset.asBool
-    msdram.io.in <> in
-    sdram_bundle <> msdram.io.sdram
-  }
-}
+class APBSDRAM(address: Seq[AddressSet])(implicit p: Parameters)
+  extends APB4DevTemplate(address, new SDRAMIO)((in: APBBundle, outer: LazyModuleImp, extra) => {
+  val msdram = Module(new sdram_top_apb)
+  msdram.io.clock := outer.clock
+  msdram.io.reset := outer.reset.asBool
+  msdram.io.in <> in
+  extra <> msdram.io.sdram
+})
