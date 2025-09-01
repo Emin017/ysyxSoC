@@ -32,21 +32,28 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   def AddrSpace(base: BigInt, len: BigInt = 0x1000) = AddressSet.misaligned(base, len)
 
+  // RISC-V system
+  val lclint    = LazyModule(new APB4CLINT   (AddrSpace(0x02010000, 0x10000)))
+
+  // generic system
   val luart0    = LazyModule(new APBUart16550(AddrSpace(0x10000000, 0x8)))
   val lspi      = LazyModule(new APBSPI      (AddrSpace(0x10001000, 0x20)   ++     // SPI controller
                                               AddrSpace(0x30000000, 0x10000000)))  // XIP flash
   val larchinfo = LazyModule(new APB4ArchInfo(AddrSpace(0x10006000, 0x10)))
 
+  // memory
+  val sdramAddressSet = AddrSpace(0x80000000L, 0x2000000)
+  val lsdram_apb = if (!Config.sdramUseAXI) Some(LazyModule(new APBSDRAM (sdramAddressSet))) else None
+  val lsdram_axi = if ( Config.sdramUseAXI) Some(LazyModule(new AXI4SDRAM(sdramAddressSet))) else None
+
+  // homework
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
   val lvga      = if (Config.hasHomeWork) Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000)))) else None
   val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
 
-  val sdramAddressSet = AddrSpace(0x80000000L, 0x2000000)
-  val lsdram_apb = if (!Config.sdramUseAXI) Some(LazyModule(new APBSDRAM (sdramAddressSet))) else None
-  val lsdram_axi = if ( Config.sdramUseAXI) Some(LazyModule(new AXI4SDRAM(sdramAddressSet))) else None
-
-  List(lspi, luart0, larchinfo).map(_.node := apbxbar)
+  List(lclint,
+       lspi, luart0, larchinfo).map(_.node := apbxbar)
   if (Config.isDstage) {
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
   } else if (Config.hasHomeWork) {
@@ -86,6 +93,9 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     } else {
       cpu.module.io_slave := DontCare
     }
+
+    // external slower clock
+    val clock_half = IO(Input(Bool()))
 
     // connect interrupt signal to cpu
     val intr_from_chipSlave = IO(Input(Bool()))
@@ -145,6 +155,11 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       fpga.master_mmio.map(_ := DontCare)
       fpga.slave.map(_ := DontCare)
     }
+
+    // slower clock
+    val divReg = RegInit(false.B)
+    divReg := !divReg
+    masic.clock_half := divReg
 
     masic.intr_from_chipSlave := false.B
 
