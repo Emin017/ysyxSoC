@@ -42,6 +42,9 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val larchinfo = LazyModule(new APB4ArchInfo(AddrSpace(0x10006000, 0x10)))
 
   // interface
+  val lgpio0    = LazyModule(new APB4GPIO    (AddrSpace(0x10100000, 0x40)))
+  val lgpio1    = LazyModule(new APB4GPIO    (AddrSpace(0x10101000, 0x40)))
+  val lgpio2    = LazyModule(new APB4GPIO    (AddrSpace(0x10102000, 0x40)))
   val ltim0     = LazyModule(new APB4Timer   (AddrSpace(0x10108000, 0x20)))
   val ltim1     = LazyModule(new APB4Timer   (AddrSpace(0x10109000, 0x20)))
   val ltim2     = LazyModule(new APB4Timer   (AddrSpace(0x1010a000, 0x20)))
@@ -63,7 +66,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   List(lclint,
        lspi, luart0, larchinfo,
-       ltim0, ltim1, ltim2, ltim3,
+       lgpio0, lgpio1, lgpio2, ltim0, ltim1, ltim2, ltim3,
        lcrc
   ).map(_.node := apbxbar)
 
@@ -114,6 +117,13 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
       t.module.extra.capch_i := false.B
       t.module.extra.exclk_i := clock_half
     }
+    List(lgpio0, lgpio1, lgpio2).map { t =>
+      t.module.extra.gpio_in_i := 0.U
+      t.module.extra.gpio_alt_0_out_i := 0.U
+      t.module.extra.gpio_alt_0_dir_i := 0.U
+      t.module.extra.gpio_alt_1_out_i := 0.U
+      t.module.extra.gpio_alt_1_dir_i := 0.U
+    }
 
     // connect interrupt signal to cpu
     val intr_from_chipSlave = IO(Input(Bool()))
@@ -138,9 +148,10 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val spi   = genAPB4DevIO("spi", lspi)
     val sdram = genIO("sdram", sdramBundle)
     val psram = genSomeAPB4DevIO("psram", lpsram)
-    val gpio  = genSomeAPB4DevIO("gpio", lgpio)
+    //val gpio  = genSomeAPB4DevIO("gpio", lgpio)
     val ps2   = genSomeAPB4DevIO("ps2", lkeyboard)
     val vga   = genSomeAPB4DevIO("vga", lvga)
+    val gpio  = genIO("gpio", lgpio0.module.extra.gpio_out_o)
   }
 }
 
@@ -181,6 +192,9 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     masic.intr_from_chipSlave := false.B
 
+    val gpio_led = Module(new gpio_led_model)
+    gpio_led.io.led_i := masic.gpio
+
     val flash = Module(new flash)
     flash.io <> masic.spi
     flash.io.ss := masic.spi.ss(0)
@@ -194,7 +208,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     val externalPins = IO(new Bundle{
       val uart = chiselTypeOf(masic.uart)
-      val gpio = if (Config.hasHomeWork) Some(chiselTypeOf(masic.gpio.get)) else None
+      //val gpio = if (Config.hasHomeWork) Some(chiselTypeOf(masic.gpio.get)) else None
       val ps2  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.ps2.get))  else None
       val vga  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.vga.get))  else None
     })
@@ -204,7 +218,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       val psram = Module(new psramChisel)
       psram.io <> masic.psram.get
 
-      externalPins.gpio.get <> masic.gpio.get
+      //externalPins.gpio.get <> masic.gpio.get
       externalPins.ps2.get <> masic.ps2.get
       externalPins.vga.get <> masic.vga.get
     }
