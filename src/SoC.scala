@@ -41,6 +41,9 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
                                               AddrSpace(0x30000000, 0x10000000)))  // XIP flash
   val larchinfo = LazyModule(new APB4ArchInfo(AddrSpace(0x10006000, 0x10)))
 
+  // application
+  val lcrc      = LazyModule(new APB4CRC     (AddrSpace(0x10301000, 0x20)))
+
   // memory
   val sdramAddressSet = AddrSpace(0x80000000L, 0x2000000)
   val lsdram_apb = if (!Config.sdramUseAXI) Some(LazyModule(new APBSDRAM (sdramAddressSet))) else None
@@ -53,7 +56,10 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
 
   List(lclint,
-       lspi, luart0, larchinfo).map(_.node := apbxbar)
+       lspi, luart0, larchinfo,
+       lcrc
+  ).map(_.node := apbxbar)
+
   if (Config.isDstage) {
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
   } else if (Config.hasHomeWork) {
