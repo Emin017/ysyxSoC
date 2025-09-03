@@ -49,10 +49,13 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lgpio2    = LazyModule(new APB4GPIO    (AddrSpace(0x10102000, 0x40)))
   val li2c      = LazyModule(new APB4I2C     (AddrSpace(0x10104000, 0x20)))
   val lps2      = LazyModule(new APB4PS2     (AddrSpace(0x10105000, 0x10)))
+  val lpwm0     = LazyModule(new APB4PWM     (AddrSpace(0x10106000, 0x40)))
+  val lpwm1     = LazyModule(new APB4PWM     (AddrSpace(0x10107000, 0x40)))
   val ltim0     = LazyModule(new APB4Timer   (AddrSpace(0x10108000, 0x20)))
   val ltim1     = LazyModule(new APB4Timer   (AddrSpace(0x10109000, 0x20)))
   val ltim2     = LazyModule(new APB4Timer   (AddrSpace(0x1010a000, 0x20)))
   val ltim3     = LazyModule(new APB4Timer   (AddrSpace(0x1010b000, 0x20)))
+
 
   // multimedia
   val li2s      = LazyModule(new APB4I2S     (AddrSpace(0x10201000, 0x20)))
@@ -73,7 +76,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   List(lclint, lplic,
        lspi, luart0, larchinfo,
-       lgpio0, lgpio1, lgpio2, li2c, lps2, ltim0, ltim1, ltim2, ltim3,
+       lgpio0, lgpio1, lgpio2, li2c, lps2, lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3,
        li2s,
        lcrc
   ).map(_.node := apbxbar)
@@ -150,7 +153,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val intr_from_chipSlave = IO(Input(Bool()))
     cpu.module.io_interrupt := lplic.module.irq_o
     lplic.module.extra.irq_i := Cat(List(lgpio0, lgpio1, lgpio2, li2c, li2s,
-      ltim0, ltim1, ltim2, ltim3, lps2).map(_.module.irq_o)) ## intr_from_chipSlave
+      lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3, lps2).map(_.module.irq_o)) ## intr_from_chipSlave
 
     val sdramBundle = if (Config.sdramUseAXI) lsdram_axi.get.module.sdram_bundle
                       else                    lsdram_apb.get.module.extra
