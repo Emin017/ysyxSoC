@@ -48,6 +48,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lgpio0    = LazyModule(new APB4GPIO    (AddrSpace(0x10100000, 0x40)))
   val lgpio1    = LazyModule(new APB4GPIO    (AddrSpace(0x10101000, 0x40)))
   val lgpio2    = LazyModule(new APB4GPIO    (AddrSpace(0x10102000, 0x40)))
+  val luart1    = LazyModule(new APB4UART    (AddrSpace(0x10103000, 0x20)))
   val li2c      = LazyModule(new APB4I2C     (AddrSpace(0x10104000, 0x20)))
   val lps2      = LazyModule(new APB4PS2     (AddrSpace(0x10105000, 0x10)))
   val lpwm0     = LazyModule(new APB4PWM     (AddrSpace(0x10106000, 0x40)))
@@ -78,7 +79,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   List(lclint, lplic,
        lspi, luart0, lrtc, larchinfo,
-       lgpio0, lgpio1, lgpio2, li2c, lps2, lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3,
+       lgpio0, lgpio1, lgpio2, luart1, li2c, lps2, lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3,
        lqspi, li2s,
        lrng, lcrc
   ).map(_.node := apbxbar)
@@ -182,7 +183,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
       if (Config.hasHomeWork) Some(genAPB4DevIO(name, lmodule.get)) else None
     }
 
-    val uart  = genAPB4DevIO("uart", luart0)
+    val uart0 = genAPB4DevIO("uart0", luart0)
+    val uart1 = genAPB4DevIO("uart1", luart1)
     val spi   = genAPB4DevIO("spi", lspi)
     val sdram = genIO("sdram", sdramBundle)
     val psram = genSomeAPB4DevIO("psram", lpsram)
@@ -248,11 +250,13 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     sdram.io <> masic.sdram
 
     val externalPins = IO(new Bundle{
-      val uart = chiselTypeOf(masic.uart)
+      val uart0 = chiselTypeOf(masic.uart0)
+      val uart1 = chiselTypeOf(masic.uart1)
       //val gpio = if (Config.hasHomeWork) Some(chiselTypeOf(masic.gpio.get)) else None
       val vga  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.vga.get))  else None
     })
-    externalPins.uart <> masic.uart
+    externalPins.uart0 <> masic.uart0
+    externalPins.uart1 <> masic.uart1
 
     if (Config.hasHomeWork) {
       val psram = Module(new psramChisel)
