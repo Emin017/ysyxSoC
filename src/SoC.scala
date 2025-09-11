@@ -73,17 +73,17 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
       (chipMaster.get.slave zip chiplinkNode.get.in) foreach { case (io, (bundle, _)) => io <> bundle }
 
       // connect chiplink dma interface to cpu
-      cpu.module.slave <> chipMaster.get.master_mem(0)
+      cpu.module.io_slave <> chipMaster.get.master_mem(0)
 
       // expose chiplink fpga I/O interface as ports
       fpga_io.get <> chipMaster.get.module.fpga_io
     } else {
-      cpu.module.slave := DontCare
+      cpu.module.io_slave := DontCare
     }
 
     // connect interrupt signal to cpu
     val intr_from_chipSlave = IO(Input(Bool()))
-    cpu.module.interrupt := intr_from_chipSlave
+    cpu.module.io_interrupt := intr_from_chipSlave
 
     val sdramBundle = if (Config.sdramUseAXI) lsdram_axi.get.module.sdram_bundle
                       else                    lsdram_apb.get.module.sdram_bundle

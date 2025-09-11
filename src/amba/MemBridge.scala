@@ -105,4 +105,5 @@ class MemBridge extends Module { // only adapt to multi-cycle CPU
   io.lsu.rdata := out.r.bits.data
   io.lsu.respValid := ((stateD === DMEMState.waitRvalid) && out.r.valid) ||
                       ((stateD === DMEMState.waitBvalid) && out.b.valid)
+  dontTouch(out)
 }

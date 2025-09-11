@@ -33,9 +33,9 @@ class CPU(idBits: Int)(implicit p: Parameters) extends LazyModule {
         id   = IdRange(0, 1 << idBits))))).toSeq)
   lazy val module = new Impl
   class Impl extends LazyModuleImp(this) {
-    val (master, _) = masterNode.out(0)
-    val interrupt = IO(Input(Bool()))
-    val slave = IO(Flipped(AXI4Bundle(CPUAXI4BundleParameters())))
+    val (io_master, _) = masterNode.out(0)
+    val io_interrupt = IO(Input(Bool()))
+    val io_slave = IO(Flipped(AXI4Bundle(CPUAXI4BundleParameters())))
 
     val cpu = Module(new ysyx_00000000)
     cpu.io.clock := clock
@@ -44,13 +44,15 @@ class CPU(idBits: Int)(implicit p: Parameters) extends LazyModule {
       val bridge = Module(new MemBridge)
       bridge.io.ifu <> cpu.io.io_ifu.get
       bridge.io.lsu <> cpu.io.io_lsu.get
-      master <> bridge.io.master
-      slave := DontCare
+      io_master <> bridge.io.master
+      io_slave := DontCare
+      dontTouch(io_slave)
+      dontTouch(io_interrupt)
     }
     else {
-      cpu.io.io_interrupt.get := interrupt
-      cpu.io.io_slave.get <> slave
-      master <> cpu.io.io_master.get
+      cpu.io.io_interrupt.get := io_interrupt
+      cpu.io.io_slave.get <> io_slave
+      io_master <> cpu.io.io_master.get
     }
   }
 }
