@@ -50,7 +50,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     List(lpsram.get.node, lgpio.get.node, lkeyboard.get.node, lvga.get.node).map(_ := apbxbar)
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
     val lmrom = LazyModule(new AXI4MROM(AddressSet.misaligned(0x20000000, 0x1000)))
-    val sramNode = AXI4RAM(AddressSet.misaligned(0x0f000000, 0x2000).head, false, true, 4, None, Nil, false)
+    val sramNode = AXI4RAM(AddressSet.misaligned(0x02020000, 0x2000).head, false, true, 4, None, Nil, false)
     List(lmrom.node, sramNode).map(_ := xbar2)
     xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
   } else {
