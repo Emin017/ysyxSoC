@@ -35,17 +35,19 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     AddressSet.misaligned(0x10001000, 0x1000) ++    // SPI controller
     AddressSet.misaligned(0x30000000, 0x10000000)   // XIP flash
   ))
-  val lgpio     = if (!Config.isDstage) Some(LazyModule(new APBGPIO(AddressSet.misaligned(0x10002000, 0x10)))) else None
-  val lkeyboard = if (!Config.isDstage) Some(LazyModule(new APBKeyboard(AddressSet.misaligned(0x10011000, 0x8)))) else None
-  val lvga      = if (!Config.isDstage) Some(LazyModule(new APBVGA(AddressSet.misaligned(0x21000000, 0x200000)))) else None
-  val lpsram    = if (!Config.isDstage) Some(LazyModule(new APBPSRAM(AddressSet.misaligned(0xa0000000L, 0x400000)))) else None
+  val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO(AddressSet.misaligned(0x10002000, 0x10)))) else None
+  val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddressSet.misaligned(0x10011000, 0x8)))) else None
+  val lvga      = if (Config.hasHomeWork) Some(LazyModule(new APBVGA(AddressSet.misaligned(0x21000000, 0x200000)))) else None
+  val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM(AddressSet.misaligned(0xa0000000L, 0x400000)))) else None
 
   val sdramAddressSet = AddressSet.misaligned(0x80000000L, 0x2000000)
   val lsdram_apb = if (!Config.sdramUseAXI) Some(LazyModule(new APBSDRAM (sdramAddressSet))) else None
   val lsdram_axi = if ( Config.sdramUseAXI) Some(LazyModule(new AXI4SDRAM(sdramAddressSet))) else None
 
   List(lspi.node, luart.node).map(_ := apbxbar)
-  if (!Config.isDstage) {
+  if (Config.isDstage) {
+    apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
+  } else if (Config.hasHomeWork) {
     val xbar2 = AXI4Xbar()
     List(lpsram.get.node, lgpio.get.node, lkeyboard.get.node, lvga.get.node).map(_ := apbxbar)
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
@@ -54,10 +56,12 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     List(lmrom.node, sramNode).map(_ := xbar2)
     xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
   } else {
-    apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
+    apbxbar := APBDelayer() := AXI4ToAPB() := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
   }
-  if (Config.sdramUseAXI) lsdram_axi.get.node := ysyx.AXI4Delayer() := xbar
-  else                    lsdram_apb.get.node := apbxbar
+
+  if (Config.sdramUseAXI && !Config.isDstage) lsdram_axi.get.node := ysyx.AXI4Delayer() := xbar
+  else                                        lsdram_apb.get.node := apbxbar
+
   if (Config.hasChipLink) chiplinkNode.get := xbar
   xbar := cpu.masterNode
 
@@ -96,11 +100,11 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     spi <> lspi.module.spi_bundle
     sdram <> sdramBundle
 
-    val psram = if (!Config.isDstage) Some(IO(chiselTypeOf(lpsram.get.module.qspi_bundle)))   else None
-    val gpio  = if (!Config.isDstage) Some(IO(chiselTypeOf(lgpio.get.module.gpio_bundle)))    else None
-    val ps2   = if (!Config.isDstage) Some(IO(chiselTypeOf(lkeyboard.get.module.ps2_bundle))) else None
-    val vga   = if (!Config.isDstage) Some(IO(chiselTypeOf(lvga.get.module.vga_bundle)))      else None
-    if (!Config.isDstage) {
+    val psram = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lpsram.get.module.qspi_bundle)))   else None
+    val gpio  = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lgpio.get.module.gpio_bundle)))    else None
+    val ps2   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lkeyboard.get.module.ps2_bundle))) else None
+    val vga   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lvga.get.module.vga_bundle)))      else None
+    if (Config.hasHomeWork) {
       psram.get <> lpsram.get.module.qspi_bundle
       gpio.get <> lgpio.get.module.gpio_bundle
       ps2.get <> lkeyboard.get.module.ps2_bundle
@@ -154,13 +158,13 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     val externalPins = IO(new Bundle{
       val uart = chiselTypeOf(masic.uart)
-      val gpio = if (!Config.isDstage) Some(chiselTypeOf(masic.gpio.get)) else None
-      val ps2  = if (!Config.isDstage) Some(chiselTypeOf(masic.ps2.get))  else None
-      val vga  = if (!Config.isDstage) Some(chiselTypeOf(masic.vga.get))  else None
+      val gpio = if (Config.hasHomeWork) Some(chiselTypeOf(masic.gpio.get)) else None
+      val ps2  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.ps2.get))  else None
+      val vga  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.vga.get))  else None
     })
     externalPins.uart <> masic.uart
 
-    if (!Config.isDstage) {
+    if (Config.hasHomeWork) {
       val psram = Module(new psramChisel)
       psram.io <> masic.psram.get
 

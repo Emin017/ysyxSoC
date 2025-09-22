@@ -7,8 +7,9 @@ import freechips.rocketchip.diplomacy.LazyModule
 
 object Config {
   def hasChipLink: Boolean = false
-  def sdramUseAXI: Boolean = false && !isDstage
-  def isDstage: Boolean = true
+  def sdramUseAXI: Boolean = true
+  def isDstage: Boolean = false
+  def hasHomeWork: Boolean = false
 }
 
 class ysyxSoCTop extends Module {
