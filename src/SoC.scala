@@ -95,23 +95,24 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
                       else                    lsdram_apb.get.module.extra
 
     // expose slave I/O interface as ports
-    val spi = IO(chiselTypeOf(lspi.module.extra))
-    val uart = IO(chiselTypeOf(luart0.module.extra))
-    val sdram = IO(chiselTypeOf(sdramBundle))
-    uart <> luart0.module.extra
-    spi <> lspi.module.extra
-    sdram <> sdramBundle
-
-    val psram = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lpsram.get.module.extra)))    else None
-    val gpio  = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lgpio.get.module.extra)))     else None
-    val ps2   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lkeyboard.get.module.extra))) else None
-    val vga   = if (Config.hasHomeWork) Some(IO(chiselTypeOf(lvga.get.module.extra)))      else None
-    if (Config.hasHomeWork) {
-      psram.get <> lpsram.get.module.extra
-      gpio.get <> lgpio.get.module.extra
-      ps2.get <> lkeyboard.get.module.extra
-      vga.get <> lvga.get.module.extra
+    def genIO[T <: Data](name: String, inner: T) = {
+      val outer = IO(chiselTypeOf(inner))
+      outer.suggestName(name)
+      outer <> inner
+      outer
     }
+    def genAPB4DevIO[T <: Data](name: String, lmodule: APB4DevTemplate[T]) = genIO(name, lmodule.module.extra)
+    def genSomeAPB4DevIO[T <: Data](name: String, lmodule: Option[APB4DevTemplate[T]]) = {
+      if (Config.hasHomeWork) Some(genAPB4DevIO(name, lmodule.get)) else None
+    }
+
+    val uart  = genAPB4DevIO("uart", luart0)
+    val spi   = genAPB4DevIO("spi", lspi)
+    val sdram = genIO("sdram", sdramBundle)
+    val psram = genSomeAPB4DevIO("psram", lpsram)
+    val gpio  = genSomeAPB4DevIO("gpio", lgpio)
+    val ps2   = genSomeAPB4DevIO("ps2", lkeyboard)
+    val vga   = genSomeAPB4DevIO("vga", lvga)
   }
 }
 
