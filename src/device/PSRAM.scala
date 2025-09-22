@@ -34,7 +34,7 @@ class psramChisel extends RawModule {
 }
 
 class APBPSRAM(address: Seq[AddressSet])(implicit p: Parameters)
-  extends APB4DevTemplate(address, new QSPIIO)((in: APBBundle, outer: LazyModuleImp, extra) => {
+  extends APB4DevTemplate(address, new QSPIIO)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra) => {
   val mpsram = Module(new psram_top_apb)
   mpsram.io.clock := outer.clock
   mpsram.io.reset := outer.reset
