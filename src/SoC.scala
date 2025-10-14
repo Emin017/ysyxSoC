@@ -76,20 +76,24 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
   val lvga      = if (Config.hasHomeWork) Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000)))) else None
-  val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
+  // val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
+
+  val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
 
   List(lclint, lplic,
        lspi, luart0, lrtc, lwdg, larchinfo,
        lgpio0, lgpio1, lgpio2, luart1, li2c, lps2, lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3,
        lqspi, li2s,
-       lrng, lcrc
+       lrng, lcrc,
+       lpsram
   ).map(_.node := apbxbar)
 
   if (Config.isDstage) {
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
   } else if (Config.hasHomeWork) {
     val xbar2 = AXI4Xbar()
-    List(lpsram, lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
+    // List(lpsram, lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
+    List(lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
     val lmrom = LazyModule(new AXI4MROM(AddrSpace(0x20000000, 0x1000)))
     val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x2000).head, false, true, 4, None, Nil, false)
@@ -189,7 +193,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val uart1 = genAPB4DevIO("uart1", luart1)
     val spi   = genAPB4DevIO("spi", lspi)
     val sdram = genIO("sdram", sdramBundle)
-    val psram = genSomeAPB4DevIO("psram", lpsram)
+    val psram = genAPB4DevIO("psram", lpsram)
     //val gpio  = genSomeAPB4DevIO("gpio", lgpio)
     val ps2   = genAPB4DevIO("ps2", lps2)
     val vga   = genSomeAPB4DevIO("vga", lvga)
@@ -251,6 +255,9 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     val sdram = Module(new sdramChisel)
     sdram.io <> masic.sdram
 
+    val psramModel = Module(new ESPWrapper)
+    psramModel.io <> masic.psram
+
     val externalPins = IO(new Bundle{
       val uart0 = chiselTypeOf(masic.uart0)
       val uart1 = chiselTypeOf(masic.uart1)
@@ -261,8 +268,8 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     externalPins.uart1 <> masic.uart1
 
     if (Config.hasHomeWork) {
-      val psram = Module(new psramChisel)
-      psram.io <> masic.psram.get
+      // val psram = Module(new psramChisel)
+      // psram.io <> masic.psram.get
 
       //externalPins.gpio.get <> masic.gpio.get
       externalPins.vga.get <> masic.vga.get
