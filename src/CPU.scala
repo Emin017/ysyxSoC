@@ -13,10 +13,11 @@ object CPUAXI4BundleParameters {
   def apply() = AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = ChipLinkParam.idBits)
 }
 
-class ysyx_00000000 extends BlackBox {
+class core_wrapper extends BlackBox {
   val io = IO(new Bundle {
     val clock = Input(Clock())
     val reset = Input(Reset())
+    val core_sel = Input(UInt(5.W))
     val io_interrupt = if (!Config.isDstage) Some(Input(Bool())) else None
     val io_master = if (!Config.isDstage) Some(AXI4Bundle(CPUAXI4BundleParameters())) else None
     val io_slave = if (!Config.isDstage) Some(Flipped(AXI4Bundle(CPUAXI4BundleParameters()))) else None
@@ -36,10 +37,12 @@ class CPU(idBits: Int)(implicit p: Parameters) extends LazyModule {
     val (io_master, _) = masterNode.out(0)
     val io_interrupt = IO(Input(Bool()))
     val io_slave = IO(Flipped(AXI4Bundle(CPUAXI4BundleParameters())))
+    val core_sel = IO(Input(UInt(5.W)))
 
-    val cpu = Module(new ysyx_00000000)
+    val cpu = Module(new core_wrapper)
     cpu.io.clock := clock
     cpu.io.reset := reset
+    cpu.io.core_sel := core_sel
     if (Config.isDstage) {
       val bridge = Module(new MemBridge)
       bridge.io.ifu <> cpu.io.io_ifu.get
