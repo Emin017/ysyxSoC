@@ -6,7 +6,7 @@ import freechips.rocketchip.system._
 import freechips.rocketchip.diplomacy.LazyModule
 
 object Config {
-  def hasChipLink: Boolean = false
+  def hasChipLink: Boolean = true
   def sdramUseAXI: Boolean = true
   def isDstage: Boolean = false
   def hasHomeWork: Boolean = false

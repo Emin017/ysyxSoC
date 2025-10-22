@@ -3,7 +3,6 @@ package ysyx
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.Analog
-
 import freechips.rocketchip.diplomacy._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.subsystem._
@@ -45,6 +44,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lwdg      = LazyModule(new APB4WDG     (AddrSpace(0x10005000, 0x20)))
   val larchinfo = LazyModule(new APB4ArchInfo(AddrSpace(0x10006000, 0x10)))
 
+  val lrcu      = LazyModule(new APB4RCU     (AddrSpace(0x10002000, 0x1000)))
+
   // interface
   val lgpio0    = LazyModule(new APB4GPIO    (AddrSpace(0x10100000, 0x40)))
   val lgpio1    = LazyModule(new APB4GPIO    (AddrSpace(0x10101000, 0x40)))
@@ -75,7 +76,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   // homework
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
-  val lvga      = if (Config.hasHomeWork) Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000)))) else None
+//  val lvga      = if (Config.hasHomeWork) Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000)))) else None
+  val lvga      = Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000))))
   // val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
 
   val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
@@ -85,7 +87,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
        lgpio0, lgpio1, lgpio2, luart1, li2c, lps2, lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3,
        lqspi, li2s,
        lrng, lcrc,
-       lpsram
+       lpsram, lvga.get,
+       lrcu
   ).map(_.node := apbxbar)
 
   if (Config.isDstage) {
@@ -93,7 +96,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   } else if (Config.hasHomeWork) {
     val xbar2 = AXI4Xbar()
     // List(lpsram, lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
-    List(lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
+    List(lgpio, lkeyboard).map(_.get.node := apbxbar)
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
     val lmrom = LazyModule(new AXI4MROM(AddrSpace(0x20000000, 0x1000)))
     val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x2000).head, false, true, 4, None, Nil, false)
@@ -186,7 +189,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     }
     def genAPB4DevIO[T <: Data](name: String, lmodule: APB4DevTemplate[T]) = genIO(name, lmodule.module.extra)
     def genSomeAPB4DevIO[T <: Data](name: String, lmodule: Option[APB4DevTemplate[T]]) = {
-      if (Config.hasHomeWork) Some(genAPB4DevIO(name, lmodule.get)) else None
+      Some(genAPB4DevIO(name, lmodule.get))
     }
 
     val uart0 = genAPB4DevIO("uart0", luart0)
@@ -197,7 +200,26 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     //val gpio  = genSomeAPB4DevIO("gpio", lgpio)
     val ps2   = genAPB4DevIO("ps2", lps2)
     val vga   = genSomeAPB4DevIO("vga", lvga)
-    val gpio  = genIO("gpio", lgpio0.module.extra.gpio_out_o)
+
+    val gpio0 = genAPB4DevIO("gpio0", lgpio0)
+    val gpio1 = genAPB4DevIO("gpio1_i", lgpio1)
+    val gpio2 = genAPB4DevIO("gpio2_i", lgpio2)
+
+    val pwm0 = genAPB4DevIO("pwm0", lpwm0)
+    val pwm1 = genAPB4DevIO("pwm1", lpwm1)
+
+    val i2c = genAPB4DevIO("i2c", li2c)
+    val i2s = genAPB4DevIO("i2s", li2s)
+
+    val timer0 = genAPB4DevIO("timer0", ltim0)
+    val timer1 = genAPB4DevIO("timer1", ltim1)
+    val timer2 = genAPB4DevIO("timer2", ltim2)
+    val timer3 = genAPB4DevIO("timer3", ltim3)
+
+    val rcu    = genAPB4DevIO("rcu", lrcu)
+
+    val core_sel = genIO("core_sel", cpu.module.core_sel)
+    val core_irq = genIO("core_irq", cpu.module.io_interrupt)
   }
 }
 
@@ -239,7 +261,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     masic.intr_from_chipSlave := false.B
 
     val gpio_led = Module(new gpio_led_model)
-    gpio_led.io.led_i := masic.gpio
+    gpio_led.io.led_i := masic.gpio0.gpio_out_o
 
     masic.ps2.ps2_clk_i := false.B
     masic.ps2.ps2_dat_i := false.B
@@ -249,7 +271,8 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     flash.io.ss := masic.spi.ss(0)
     val bitrev = Module(new bitrev)
     bitrev.io <> masic.spi
-    bitrev.io.ss := masic.spi.ss(7)
+//    bitrev.io.ss := masic.spi.ss(7)
+    bitrev.io.ss := masic.spi.ss(1)
     masic.spi.miso := List(bitrev.io, flash.io).map(_.miso).reduce(_&&_)
 
     val sdram = Module(new sdramChisel)
@@ -261,11 +284,60 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     val externalPins = IO(new Bundle{
       val uart0 = chiselTypeOf(masic.uart0)
       val uart1 = chiselTypeOf(masic.uart1)
+
+      val gpio0 = chiselTypeOf(masic.gpio0)
+      val gpio1 = chiselTypeOf(masic.gpio1)
+      val gpio2 = chiselTypeOf(masic.gpio2)
+
+      val spi  = chiselTypeOf(masic.spi)
       //val gpio = if (Config.hasHomeWork) Some(chiselTypeOf(masic.gpio.get)) else None
-      val vga  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.vga.get))  else None
+//      val vga  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.vga.get))  else None
+      val vga = Some(chiselTypeOf(masic.vga.get))
+      val core_sel = chiselTypeOf(masic.core_sel)
+      val core_irq = chiselTypeOf(masic.core_irq)
+
+      val pwm0 = chiselTypeOf(masic.pwm0)
+      val pwm1 = chiselTypeOf(masic.pwm1)
+
+      val i2c = chiselTypeOf(masic.i2c)
+      val timer0 = chiselTypeOf(masic.timer0)
+      val timer1 = chiselTypeOf(masic.timer1)
+      val timer2 = chiselTypeOf(masic.timer2)
+      val timer3 = chiselTypeOf(masic.timer3)
+
+      val ps2 = chiselTypeOf(masic.ps2)
+      val i2s = chiselTypeOf(masic.i2s)
+
+      val rcu = chiselTypeOf(masic.rcu)
     })
     externalPins.uart0 <> masic.uart0
     externalPins.uart1 <> masic.uart1
+
+    externalPins.gpio0 <> masic.gpio0
+    externalPins.gpio1 <> masic.gpio1
+    externalPins.gpio2 <> masic.gpio2
+
+    externalPins.spi   <> masic.spi
+
+    externalPins.core_sel <> masic.core_sel
+    externalPins.core_irq <> masic.core_irq
+
+    externalPins.pwm0 <> masic.pwm0
+    externalPins.pwm1 <> masic.pwm1
+
+    externalPins.i2c <> masic.i2c
+
+    externalPins.timer0 <> masic.timer0
+    externalPins.timer1 <> masic.timer1
+    externalPins.timer2 <> masic.timer2
+    externalPins.timer3 <> masic.timer3
+
+    externalPins.ps2 <> masic.ps2
+
+    externalPins.vga.get <> masic.vga.get
+    externalPins.i2s <> masic.i2s
+
+    externalPins.rcu <> masic.rcu
 
     if (Config.hasHomeWork) {
       // val psram = Module(new psramChisel)
