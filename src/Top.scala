@@ -7,7 +7,7 @@ import freechips.rocketchip.diplomacy.LazyModule
 
 object Config {
   def hasChipLink: Boolean = true
-  def enableSimulation: Boolean = true
+  def enableSimulation: Boolean = false
   def sdramUseAXI: Boolean = true
   def isDstage: Boolean = false
   def hasHomeWork: Boolean = false
