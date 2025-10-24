@@ -76,9 +76,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   // homework
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
-//  val lvga      = if (Config.hasHomeWork) Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000)))) else None
-  val lvga      = Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000))))
-  // val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
+  //val lvga      = Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000))))
+  //val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
 
   val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
 
@@ -87,7 +86,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
        lgpio0, lgpio1, lgpio2, luart1, li2c, lps2, lpwm0, lpwm1, ltim0, ltim1, ltim2, ltim3,
        lqspi, li2s,
        lrng, lcrc,
-       lpsram, lvga.get,
+       lpsram,
        lrcu
   ).map(_.node := apbxbar)
 
@@ -199,7 +198,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val psram = genAPB4DevIO("psram", lpsram)
     //val gpio  = genSomeAPB4DevIO("gpio", lgpio)
     val ps2   = genAPB4DevIO("ps2", lps2)
-    val vga   = genSomeAPB4DevIO("vga", lvga)
+    //val vga   = genSomeAPB4DevIO("vga", lvga)
 
     val gpio0 = genAPB4DevIO("gpio0", lgpio0)
     val gpio1 = genAPB4DevIO("gpio1_i", lgpio1)
@@ -233,24 +232,28 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
   override lazy val module = new Impl
   class Impl extends LazyModuleImp(this) with DontTouch {
     val masic = asic.module
+    masic.dontTouchPorts()
 
     if (Config.hasChipLink) {
-      val fpga = LazyModule(new ysyxSoCFPGA)
-      val mfpga = Module(fpga.module)
-      masic.dontTouchPorts()
+      if (Config.enableSimulation) {
+        val fpga = LazyModule(new ysyxSoCFPGA)
+        val mfpga = Module(fpga.module)
 
-      masic.fpga_io.get.b2c <> mfpga.fpga_io.c2b
-      mfpga.fpga_io.b2c <> masic.fpga_io.get.c2b
+        masic.fpga_io.get.b2c <> mfpga.fpga_io.c2b
+        mfpga.fpga_io.b2c <> masic.fpga_io.get.c2b
 
-      (fpga.master_mem zip fpga.axi4MasterMemNode.in).map { case (io, (_, edge)) =>
-        val mem = LazyModule(new SimAXIMem(edge,
-          base = ChipLinkParam.mem.base, size = ChipLinkParam.mem.mask + 1))
-        Module(mem.module)
-        mem.io_axi4.head <> io
+        (fpga.master_mem zip fpga.axi4MasterMemNode.in).map { case (io, (_, edge)) =>
+          val mem = LazyModule(new SimAXIMem(edge,
+            base = ChipLinkParam.mem.base, size = ChipLinkParam.mem.mask + 1))
+            Module(mem.module)
+            mem.io_axi4.head <> io
+        }
+
+        fpga.master_mmio.map(_ := DontCare)
+        fpga.slave.map(_ := DontCare)
+      } else {
+        masic.fpga_io.get.b2c <> DontCare
       }
-
-      fpga.master_mmio.map(_ := DontCare)
-      fpga.slave.map(_ := DontCare)
     }
 
     // slower clock
@@ -260,26 +263,32 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     masic.intr_from_chipSlave := false.B
 
-    val gpio_led = Module(new gpio_led_model)
-    gpio_led.io.led_i := masic.gpio0.gpio_out_o
-
     masic.ps2.ps2_clk_i := false.B
     masic.ps2.ps2_dat_i := false.B
 
-    val flash = Module(new flash)
-    flash.io <> masic.spi
-    flash.io.ss := masic.spi.ss(0)
-    val bitrev = Module(new bitrev)
-    bitrev.io <> masic.spi
-//    bitrev.io.ss := masic.spi.ss(7)
-    bitrev.io.ss := masic.spi.ss(1)
-    masic.spi.miso := List(bitrev.io, flash.io).map(_.miso).reduce(_&&_)
+    if (Config.enableSimulation) {
+      val gpio_led = Module(new gpio_led_model)
+      gpio_led.io.led_i := masic.gpio0.gpio_out_o
 
-    val sdram = Module(new sdramChisel)
-    sdram.io <> masic.sdram
+      val flash = Module(new flash)
+      flash.io <> masic.spi
+      flash.io.ss := masic.spi.ss(0)
 
-    val psramModel = Module(new ESPWrapper)
-    psramModel.io <> masic.psram
+      val bitrev = Module(new bitrev)
+      bitrev.io <> masic.spi
+      bitrev.io.ss := masic.spi.ss(7)
+      bitrev.io.ss := masic.spi.ss(1)
+      masic.spi.miso := List(bitrev.io, flash.io).map(_.miso).reduce(_&&_)
+
+      val sdram = Module(new sdramChisel)
+      sdram.io <> masic.sdram
+
+      val psramModel = Module(new ESPWrapper)
+      psramModel.io <> masic.psram
+
+    } else {
+      masic.psram.spi_io_in_i := DontCare
+    }
 
     val externalPins = IO(new Bundle{
       val uart0 = chiselTypeOf(masic.uart0)
@@ -290,9 +299,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       val gpio2 = chiselTypeOf(masic.gpio2)
 
       val spi  = chiselTypeOf(masic.spi)
-      //val gpio = if (Config.hasHomeWork) Some(chiselTypeOf(masic.gpio.get)) else None
-//      val vga  = if (Config.hasHomeWork) Some(chiselTypeOf(masic.vga.get))  else None
-      val vga = Some(chiselTypeOf(masic.vga.get))
+      //val vga = Some(chiselTypeOf(masic.vga.get))
       val core_sel = chiselTypeOf(masic.core_sel)
       val core_irq = chiselTypeOf(masic.core_irq)
 
@@ -334,17 +341,10 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     externalPins.ps2 <> masic.ps2
 
-    externalPins.vga.get <> masic.vga.get
+    //externalPins.vga.get <> masic.vga.get
     externalPins.i2s <> masic.i2s
 
     externalPins.rcu <> masic.rcu
 
-    if (Config.hasHomeWork) {
-      // val psram = Module(new psramChisel)
-      // psram.io <> masic.psram.get
-
-      //externalPins.gpio.get <> masic.gpio.get
-      externalPins.vga.get <> masic.vga.get
-    }
   }
 }

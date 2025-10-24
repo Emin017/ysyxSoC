@@ -1,12 +1,13 @@
 package ysyx
 
 import chisel3._
-import org.chipsalliance.cde.config.{Parameters, Config}
+import org.chipsalliance.cde.config.{Config, Parameters}
 import freechips.rocketchip.system._
 import freechips.rocketchip.diplomacy.LazyModule
 
 object Config {
   def hasChipLink: Boolean = true
+  def enableSimulation: Boolean = true
   def sdramUseAXI: Boolean = true
   def isDstage: Boolean = false
   def hasHomeWork: Boolean = false
