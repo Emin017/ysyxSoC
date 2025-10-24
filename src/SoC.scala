@@ -3,6 +3,7 @@ package ysyx
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.Analog
+import device.ChipLinkWrapper
 import freechips.rocketchip.diplomacy._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.subsystem._
@@ -27,7 +28,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val xbar = AXI4Xbar()
   val apbxbar = LazyModule(new APBFanout).node
   val cpu = LazyModule(new CPU(idBits = ChipLinkParam.idBits))
-  val chipMaster = if (Config.hasChipLink) Some(LazyModule(new ChipLinkMaster)) else None
+  //val chipMaster = if (Config.hasChipLink) Some(LazyModule(new ChipLinkMaster)) else None
+  val chipMaster = if (Config.hasChipLink) Some(LazyModule(new ChipLinkWrapper)) else None
   val chiplinkNode = if (Config.hasChipLink) Some(AXI4SlaveNodeGenerator(p(ExtBus), ChipLinkParam.allSpace)) else None
 
   def AddrSpace(base: BigInt, len: BigInt = 0x1000) = AddressSet.misaligned(base, len)
