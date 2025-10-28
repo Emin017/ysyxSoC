@@ -79,7 +79,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
   //val lvga      = Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000))))
-  //val lpsram    = if (Config.hasHomeWork) Some(LazyModule(new APBPSRAM   (AddrSpace(0xa0000000L, 0x400000)))) else None
 
   val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
 
@@ -172,6 +171,18 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     qspi_nss_o := qspi_io.spi_nss_o
     qspi_io.spi_io_in_i := Cat((0 to 3).map(i => TriStateInBuf(qspi_dio(i), qspi_io.spi_io_out_o(i), qspi_io.spi_io_en_o(i))).reverse)
 
+    val psram_io = lpsram.module.extra
+    val psram_sck = IO(Output(Bool()))
+    val psram_nss = IO(Output(UInt(2.W)))
+    val psram_en_o = IO(Output(UInt(4.W)))
+    val psram_in_i = IO(Input(UInt(4.W)))
+    val psram_out_o = IO(Output(UInt(4.W)))
+    psram_sck := psram_io.spi_sck_o
+    psram_nss := psram_io.spi_nss_o
+    psram_en_o := psram_io.spi_io_en_o
+    psram_out_o := psram_io.spi_io_out_o
+    psram_io.spi_io_in_i := psram_in_i
+
     // connect interrupt signal
     val intr_from_chipSlave = IO(Input(Bool()))
     cpu.module.io_interrupt := lplic.module.irq_o
@@ -197,7 +208,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val uart1 = genAPB4DevIO("uart1", luart1)
     val spi   = genAPB4DevIO("spi", lspi)
     val sdram = genIO("sdram", sdramBundle)
-    val psram = genAPB4DevIO("psram", lpsram)
     //val gpio  = genSomeAPB4DevIO("gpio", lgpio)
     val ps2   = genAPB4DevIO("ps2", lps2)
     //val vga   = genSomeAPB4DevIO("vga", lvga)
@@ -286,10 +296,10 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       sdram.io <> masic.sdram
 
       val psramModel = Module(new ESPWrapper)
-      psramModel.io <> masic.psram
+      psramModel.io <> masic.psram_io
 
     } else {
-      masic.psram.spi_io_in_i := DontCare
+      masic.psram_in_i := DontCare
     }
 
     val externalPins = IO(new Bundle{

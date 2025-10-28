@@ -3,18 +3,25 @@ package ysyx
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.Analog
-
 import freechips.rocketchip.amba.apb._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util._
 
+class ESPBundle extends Bundle {
+  val sclk: Bool   = Input(Bool())
+  val csn:  Bool   = Input(Bool())
+  val sio:  Analog = Analog(4.W)
+}
+
+class PSRAMIO extends Bundle {
+  val sck = Output(Bool())
+  val nss  = Output(UInt(2.W))
+  val dio = Analog(4.W)
+}
+
 class ESP_PSRAM64H extends BlackBox {
-  val io = IO(new Bundle {
-    val sclk: Clock  = Input(Clock())
-    val csn:  Bool   = Input(Bool())
-    val sio:  Analog = Analog(4.W)
-  })
+  val io = IO(new ESPBundle())
 }
 
 class ESPWrapper extends RawModule {
@@ -143,6 +150,6 @@ class APBPSRAM(address: Seq[AddressSet])(implicit p: Parameters)
     val mpsram = Module(new PSRAMWrapper(address.head.base))
     mpsram.clock := outer.clock
     mpsram.reset := outer.reset
-    mpsram.io.in <> in
+    mpsram.io.in.squeezeAll :<>= in // Use squeezeAll to adapt the spi nss width
     extra <> mpsram.io.qspi
   })
