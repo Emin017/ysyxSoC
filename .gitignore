@@ -1,2 +1,10 @@
 build/
 out/
+
+# IDE files
+.bsp/
+.idea/
+.metals/
+.vscode/
+
+.DS_Store
