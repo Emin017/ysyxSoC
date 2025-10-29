@@ -7,7 +7,7 @@ import freechips.rocketchip.subsystem.{ExtIn, ExtMem, MemoryPortParams}
 import freechips.rocketchip.util.StringToAugmentedString
 import org.chipsalliance.cde.config.Parameters
 import ysyx.ChipLinkParam.idBits
-import ysyx.{CPUAXI4BundleParameters, ChipLinkParam}
+import ysyx.ChipLinkParam
 
 class FpgaDataLane(dataBits: Int) extends Bundle {
   val clk  = Output(Clock())
@@ -23,8 +23,8 @@ class FpgaIO extends Bundle {
 class ChipLinkIO extends Bundle {
   val clock = Input(Clock())
   val reset = Input(Reset())
-  val slave_axi4_mem_0 = Flipped(new AXI4Bundle(CPUAXI4BundleParameters()))
-  val mem_axi4_0 = new AXI4Bundle(CPUAXI4BundleParameters())
+  val slave_axi4_mem_0 = Flipped(new AXI4Bundle(AXI4BundleParameters(addrBits = 32, dataBits = 64, idBits = ChipLinkParam.idBits)))
+  val mem_axi4_0 = new AXI4Bundle(AXI4BundleParameters(addrBits = 32, dataBits = 64, idBits = ChipLinkParam.idBits))
   val fpga_io = new FpgaIO
 }
 
@@ -91,13 +91,13 @@ class ChipLinkWrapper(implicit p: Parameters) extends LazyModule {
 
         mchiplink.io.slave_axi4_mem_0.exclude(
           _.ar.bits.addr, _.aw.bits.addr
-        ) :<>= in.exclude(
+        ).squeezeAll :<>= in.exclude(
           _.ar.bits.addr, _.aw.bits.addr
-        )
+        ).squeezeAll
         mchiplink.io.slave_axi4_mem_0.ar.bits.addr := in.ar.bits.addr - "h60000000".U(32.W)
         mchiplink.io.slave_axi4_mem_0.aw.bits.addr := in.aw.bits.addr - "h60000000".U(32.W)
 
-        mchiplink.io.mem_axi4_0 <> out
+        out :<>= mchiplink.io.mem_axi4_0.squeezeAll
         mchiplink.io.fpga_io <> fpga_io
       }
     }
