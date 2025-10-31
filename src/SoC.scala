@@ -10,7 +10,9 @@ import freechips.rocketchip.subsystem._
 import freechips.rocketchip.util._
 import freechips.rocketchip.amba.axi4._
 import freechips.rocketchip.amba.apb._
+import freechips.rocketchip.prci.{ClockSourceNode, ClockSourceParameters, FixedClockBroadcast}
 import freechips.rocketchip.system.SimAXIMem
+import org.chipsalliance.diplomacy.lazymodule.LazyModule
 
 object AXI4SlaveNodeGenerator {
   def apply(params: Option[MasterPortParams], address: Seq[AddressSet])(implicit valName: ValName) =
@@ -25,6 +27,12 @@ object AXI4SlaveNodeGenerator {
 }
 
 class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
+  val oldIPClockSource = ClockSourceNode(Seq(ClockSourceParameters(name = Some("old_ip_clk"))))
+  // connect old IP clock/reset to external pins
+  // These clock/reset signals should be connected to the RCU outputs to align with the previous SoC design.
+  private val oldIPClockBroadcast = FixedClockBroadcast(None)
+  oldIPClockBroadcast := oldIPClockSource
+
   val xbar = AXI4Xbar()
   val apbxbar = LazyModule(new APBFanout).node
   val cpu = LazyModule(new CPU(idBits = ChipLinkParam.idBits))
@@ -110,7 +118,11 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   else                                        lsdram_apb.get.node := apbxbar
 
   if (Config.hasChipLink) chiplinkNode.get := xbar
+  if (Config.hasChipLink) chipMaster.get.clockNode := oldIPClockBroadcast
   xbar := cpu.masterNode
+
+  luart0.clockNode.get := oldIPClockBroadcast
+  lspi.clockNode.get   := oldIPClockBroadcast
 
   override lazy val module = new Impl
   class Impl extends LazyModuleImp(this) with DontTouch {
@@ -134,6 +146,13 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
     // external slower clock
     val clock_half = IO(Input(Bool()))
+
+    val oldIPClock = IO(Input(Clock()))
+    val oldIPReset = IO(Input(Reset()))
+    // connect old IP clock/reset to external pins
+    // These clock/reset signals should be connected to the RCU outputs to align with the previous SoC design.
+    oldIPClockSource.out.head._1.clock := oldIPClock
+    oldIPClockSource.out.head._1.reset := oldIPReset
 
     List(ltim0, ltim1, ltim2, ltim3).map { t =>
       t.module.extra.capch_i := false.B
@@ -283,6 +302,9 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     masic.ps2.ps2_clk_i := false.B
     masic.ps2.ps2_dat_i := false.B
+
+    masic.oldIPClock := DontCare
+    masic.oldIPReset := DontCare
 
     if (Config.enableSimulation) {
       val gpio_led = Module(new gpio_led_model)

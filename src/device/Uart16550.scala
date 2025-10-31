@@ -23,10 +23,10 @@ class uart_top_apb extends BlackBox {
 }
 
 class APBUart16550(address: Seq[AddressSet])(implicit p: Parameters)
-  extends APB4DevTemplate(address, new UARTIO)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra) => {
+  extends APB4DevTemplate(address, new UARTIO, hasClockNode = true)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra, genClock, genReset) => {
   val muart = Module(new uart_top_apb)
-  muart.io.clock := outer.clock
-  muart.io.reset := outer.reset
+  muart.io.clock := genClock.getOrElse(outer.clock)
+  muart.io.reset := genReset.getOrElse(outer.reset)
   muart.io.in <> in
   extra <> muart.io.uart
 })

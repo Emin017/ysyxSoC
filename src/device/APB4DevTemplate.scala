@@ -2,10 +2,10 @@ package ysyx
 
 import chisel3._
 import chisel3.util._
-
 import freechips.rocketchip.amba.apb._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.diplomacy._
+import freechips.rocketchip.prci.{ClockSinkNode, ClockSinkParameters}
 
 object APBSlaveNodeGenerator {
   def apply(address: Seq[AddressSet])(implicit p: Parameters) =
@@ -18,15 +18,19 @@ object APBSlaveNodeGenerator {
     beatBytes  = 4)))
 }
 
-class APB4DevTemplate[T <: Data](address: Seq[AddressSet], extraIO: T = null, hasIRQout: Boolean = false)
-  (body: (APBBundle, LazyModuleImp, Bool, T) => Unit)(implicit p: Parameters) extends LazyModule {
+class APB4DevTemplate[T <: Data](address: Seq[AddressSet], extraIO: T = null, hasIRQout: Boolean = false, hasClockNode: Boolean = false)
+  (body: (APBBundle, LazyModuleImp, Bool, T, Option[Clock], Option[Reset]) => Unit)(implicit p: Parameters) extends LazyModule {
   val node = APBSlaveNodeGenerator(address)
+  val clockNode = if (hasClockNode) Some(ClockSinkNode(Seq(ClockSinkParameters()))) else None
   lazy val module = new Impl
   class Impl extends LazyModuleImp(this) {
     val (in, _) = node.in(0)
     val extra = if (extraIO != null) IO(Flipped(Flipped(extraIO))) else null.asInstanceOf[T]
     val irq_o = if (hasIRQout) IO(Output(Bool())) else null.asInstanceOf[Bool]
-    body(in, this, irq_o, extra)
+    val customClock: Option[Clock] = if (hasClockNode) clockNode.map(_.in.head._1.clock) else None
+    val customReset: Option[Reset] = if (hasClockNode) clockNode.map(_.in.head._1.reset) else None
+
+    body(in, this, irq_o, extra, customClock, customReset)
   }
 }
 
@@ -52,7 +56,7 @@ class BlackBoxWithAPB4[T <: Bundle with WithMyAPB4Bundle](gen: => T = new MyAPB4
 
 class APB4DevBlackBox[T <: Data, U <: Bundle with WithMyAPB4Bundle](address: Seq[AddressSet],
   blackboxGen: () => BlackBoxWithAPB4[U], extraIO: T = null, hasIRQout: Boolean = false)(implicit p: Parameters)
-  extends APB4DevTemplate(address, extraIO, hasIRQout)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra) => {
+  extends APB4DevTemplate(address, extraIO, hasIRQout)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra, _, _) => {
   val m = Module(blackboxGen())
   m.io.apb4_pclk := outer.clock
   m.io.apb4_presetn := !outer.reset.asBool

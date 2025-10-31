@@ -96,7 +96,7 @@ class AXI4SDRAM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyMo
 }
 
 class APBSDRAM(address: Seq[AddressSet])(implicit p: Parameters)
-  extends APB4DevTemplate(address, new SDRAMIO)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra) => {
+  extends APB4DevTemplate(address, new SDRAMIO)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra, _, _) => {
   val msdram = Module(new sdram_top_apb)
   msdram.io.clock := outer.clock
   msdram.io.reset := outer.reset.asBool

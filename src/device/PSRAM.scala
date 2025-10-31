@@ -42,7 +42,7 @@ class NmiIO extends Bundle {
   val ready: Bool = Output(Bool())
 }
 
-class PSRAMQSPIBundle(nss: Int = 8) extends Bundle {
+class PSRAMQSPIBundle(nss: Int = 4) extends Bundle {
   val spi_sck_o:    Bool = Output(Bool())
   val spi_nss_o:    UInt = Output(UInt(nss.W))
   val spi_io_en_o:  UInt = Output(UInt(4.W))
@@ -144,12 +144,12 @@ class psramChisel extends RawModule {
 }
 
 class APBPSRAM(address: Seq[AddressSet])(implicit p: Parameters)
-  extends APB4DevTemplate(address, new PSRAMQSPIBundle)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra) => {
+  extends APB4DevTemplate(address, new PSRAMQSPIBundle)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra, _, _) => {
     // Check if the address set has only one element and get the base address
     require(address.length == 1, "APBPSRAM requires only one address set now")
     val mpsram = Module(new PSRAMWrapper(address.head.base))
     mpsram.clock := outer.clock
     mpsram.reset := outer.reset
-    mpsram.io.in.squeezeAll :<>= in // Use squeezeAll to adapt the spi nss width
+    mpsram.io.in :<>= in
     extra <> mpsram.io.qspi
   })

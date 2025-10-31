@@ -3,6 +3,7 @@ package device
 import chisel3._
 import freechips.rocketchip.amba.axi4.{AXI4AdapterNode, AXI4Bundle, AXI4BundleParameters, AXI4MasterNode, AXI4MasterParameters, AXI4MasterPortParameters, AXI4SlaveNode, AXI4SlaveParameters, AXI4SlavePortParameters}
 import freechips.rocketchip.diplomacy.{AddressSet, IdRange, InModuleBody, LazyModule, LazyModuleImp, MemoryDevice, RegionType, TransferSizes}
+import freechips.rocketchip.prci.{ClockSinkNode, ClockSinkParameters}
 import freechips.rocketchip.subsystem.{ExtIn, ExtMem, MemoryPortParams}
 import freechips.rocketchip.util.StringToAugmentedString
 import org.chipsalliance.cde.config.Parameters
@@ -77,17 +78,22 @@ class ChipLinkWrapper(implicit p: Parameters) extends LazyModule {
   val node = AXI4AdapterNode()
   axi4MasterMemNode := node := axi4SlaveNode
 
+  val clockNode = ClockSinkNode(Seq(ClockSinkParameters()))
+
   lazy val module = new Impl
   class Impl extends LazyModuleImp(this) {
     val fpga_io = IO(new FpgaIO)
+
+    val genClock = clockNode.in.head._1.clock
+    val genReset = clockNode.in.head._1.reset
 
     (node.in zip node.out) foreach {
       case ((in, edgeIn), (out, edgeOut)) => {
 
         val mchiplink = Module(new ChiplinkBridge)
 
-        mchiplink.io.clock := clock
-        mchiplink.io.reset := reset
+        mchiplink.io.clock := genClock
+        mchiplink.io.reset := genReset
 
         mchiplink.io.slave_axi4_mem_0.exclude(
           _.ar.bits.addr, _.aw.bits.addr
