@@ -169,11 +169,11 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     lrtc.module.extra.rtc_rst_n_i := !reset.asBool
     lwdg.module.extra.rtc_clk_i := clock_half
 
-    val i2c_io = li2c.module.extra
-    val i2c_scl = IO(Analog(1.W))
-    val i2c_sda = IO(Analog(1.W))
-    i2c_io.scl_i := TriStateInBuf(i2c_scl, i2c_io.scl_o, i2c_io.scl_dir_o)
-    i2c_io.sda_i := TriStateInBuf(i2c_sda, i2c_io.sda_o, i2c_io.sda_dir_o)
+//    val i2c_io = li2c.module.extra
+//    val i2c_scl = IO(Analog(1.W))
+//    val i2c_sda = IO(Analog(1.W))
+//    i2c_io.scl_i := TriStateInBuf(i2c_scl, i2c_io.scl_o, i2c_io.scl_dir_o)
+//    i2c_io.sda_i := TriStateInBuf(i2c_sda, i2c_io.sda_o, i2c_io.sda_dir_o)
 
     val i2s_io = li2s.module.extra
     val i2s_sck = IO(Analog(1.W))
