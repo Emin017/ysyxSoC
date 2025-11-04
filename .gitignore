@@ -6,6 +6,7 @@ out/
 .idea/
 .metals/
 .vscode/
+.bloop/
 
 .direnv/
 
