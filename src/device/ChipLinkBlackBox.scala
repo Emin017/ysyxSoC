@@ -9,6 +9,7 @@ import freechips.rocketchip.util.StringToAugmentedString
 import org.chipsalliance.cde.config.Parameters
 import ysyx.ChipLinkParam.idBits
 import ysyx.ChipLinkParam
+import chisel3.util.{MuxLookup, Cat}
 
 class FpgaDataLane(dataBits: Int) extends Bundle {
   val clk  = Output(Clock())
@@ -96,12 +97,27 @@ class ChipLinkWrapper(implicit p: Parameters) extends LazyModule {
         mchiplink.io.reset := genReset
 
         mchiplink.io.slave_axi4_mem_0.exclude(
-          _.ar.bits.addr, _.aw.bits.addr
+          _.ar.bits.addr, _.aw.bits.addr, _.w.bits.strb, _.w.bits.data
         ).squeezeAll :<>= in.exclude(
-          _.ar.bits.addr, _.aw.bits.addr
+          _.ar.bits.addr, _.aw.bits.addr, _.w.bits.strb, _.w.bits.data
         ).squeezeAll
         mchiplink.io.slave_axi4_mem_0.ar.bits.addr := in.ar.bits.addr - "h60000000".U(32.W)
         mchiplink.io.slave_axi4_mem_0.aw.bits.addr := in.aw.bits.addr - "h60000000".U(32.W)
+
+        val beatOffset = in.aw.bits.addr(2, 0)
+        val wordOffset = Cat(0.U(1.W), in.aw.bits.addr(1,0))
+        val shiftBytes = beatOffset - wordOffset
+        val shiftBits = shiftBytes << 3
+
+        val wstrb = in.w.bits.strb
+        val wstrbExt = Cat(0.U(4.W), wstrb)
+        val wdataExt = Cat(0.U(32.W), in.w.bits.data)
+
+        val strbAligened = (wstrbExt << shiftBytes)(7, 0) // Shift left based on address offset
+        val dataAligened = (wdataExt << shiftBits)(63, 0) // Shift left based on address offset
+
+        mchiplink.io.slave_axi4_mem_0.w.bits.strb := strbAligened
+        mchiplink.io.slave_axi4_mem_0.w.bits.data := dataAligened
 
         out :<>= mchiplink.io.mem_axi4_0.squeezeAll
         mchiplink.io.fpga_io <> fpga_io
