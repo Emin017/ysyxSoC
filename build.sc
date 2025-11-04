@@ -4,6 +4,7 @@ import $file.`rocket-chip`.dependencies.hardfloat.{common => hardfloatCommon}
 import $file.`rocket-chip`.dependencies.cde.{common => cdeCommon}
 import $file.`rocket-chip`.dependencies.diplomacy.{common => diplomacyCommon}
 import $file.`rocket-chip`.{common => rocketChipCommon}
+import mill.scalalib.scalafmt.ScalafmtModule
 
 val chiselVersion = "7.0.0-M2"
 val defaultScalaVersion = "2.13.14"
@@ -84,4 +85,9 @@ trait ysyxSoC extends ysyxSoCModule with HasThisChisel {
   override def millSourcePath = pwd
   override def sources = Task.Sources(millSourcePath / "src")
   def rocketModule = rocketchip
+}
+
+object bridge extends ScalaModule with ScalafmtModule with HasThisChisel {
+  override def millSourcePath = pwd
+  override def sources = Task.Sources(millSourcePath / "bridge")
 }

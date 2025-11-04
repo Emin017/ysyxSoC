@@ -18,6 +18,9 @@ $(V_FILE_FINAL): $(SCALA_FILES)
 
 verilog: $(V_FILE_FINAL)
 
+bridge:
+	@mill -i bridge.runMain bridge.BridgeElaborator --target-dir build
+
 clean:
 	-rm -rf build/
 
