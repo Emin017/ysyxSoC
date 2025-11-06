@@ -88,7 +88,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
   //val lvga      = Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000))))
 
-  val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
+  // val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
+  val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xC0000000L, 0x2000000)))
 
   List(lclint, lplic,
        lspi, luart0, lrtc, lwdg, larchinfo,
