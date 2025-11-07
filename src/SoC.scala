@@ -321,8 +321,8 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       bitrev.io.ss := masic.spi.ss(1)
       masic.spi.miso := List(bitrev.io, flash.io).map(_.miso).reduce(_&&_)
 
-      val sdram = Module(new sdramChisel)
-      sdram.io <> masic.sdram
+      // val sdram = Module(new sdramChisel)
+      // sdram.io <> masic.sdram
 
       val psramModel = Module(new ESPWrapper)
       psramModel.io <> masic.psram_io
@@ -330,6 +330,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     } else {
       masic.psram_in_i := DontCare
       masic.qspi_in_i := DontCare
+      masic.sdram.data_i := DontCare
     }
 
     val externalPins = IO(new Bundle{

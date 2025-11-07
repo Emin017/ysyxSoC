@@ -20,7 +20,9 @@ class SDRAMIO extends Bundle {
   val a   = Output(UInt(13.W))
   val ba  = Output(UInt(2.W))
   val dqm = Output(UInt(2.W))
-  val dq  = Analog(16.W)
+  val en  = Output(Bool())
+  val data_o = Output(UInt(16.W))
+  val data_i = Input(UInt(16.W))
 }
 
 class sdram_top_axi extends BlackBox {
@@ -45,6 +47,7 @@ class sdram extends BlackBox {
   val io = IO(Flipped(new SDRAMIO))
 }
 
+/*
 class sdramChisel extends RawModule {
   val io = IO(Flipped(new SDRAMIO))
   val (rowWidth, colWidth, bankWidth) = (io.a.getWidth, 9, io.ba.getWidth)
@@ -69,6 +72,7 @@ class sdramChisel extends RawModule {
     when (writing) { mem.write(waddr_s1, RegNext(di).asTypeOf(mem(0)), RegEnable(~io.dqm, true.B).asBools) }
   }
 }
+*/
 
 class AXI4SDRAM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyModule {
   val beatBytes = 4
