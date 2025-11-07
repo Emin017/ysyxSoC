@@ -204,7 +204,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val psram_in_i = IO(Input(UInt(4.W)))
     val psram_out_o = IO(Output(UInt(4.W)))
     psram_sck := psram_io.spi_sck_o
-    psram_nss := psram_io.spi_nss_o
+    psram_nss :<= psram_io.spi_nss_o.squeeze
     psram_en_o := psram_io.spi_io_en_o
     psram_out_o := psram_io.spi_io_out_o
     psram_io.spi_io_in_i := psram_in_i
