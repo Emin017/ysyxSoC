@@ -31,7 +31,7 @@ class CPU(idBits: Int)(implicit p: Parameters) extends LazyModule {
     AXI4MasterPortParameters(
       masters = Seq(AXI4MasterParameters(
         name = "cpu",
-        id   = IdRange(0, 1 << idBits))))).toSeq)
+        id   = IdRange(0, 1 << idBits - 1))))).toSeq)  // Use one bit to distinguishing Device IDs
   lazy val module = new Impl
   class Impl extends LazyModuleImp(this) {
     val (io_master, _) = masterNode.out(0)

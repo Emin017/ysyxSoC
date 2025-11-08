@@ -73,6 +73,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   // multimedia
   val lqspi     = LazyModule(new APB4QSPI    (AddrSpace(0x10200000, 0x20)))
   val li2s      = LazyModule(new APB4I2S     (AddrSpace(0x10201000, 0x20)))
+  val lvga      = LazyModule(new VGAWrapper  (AddrSpace(0x10202000, 0x1000), ChipLinkParam.idBits))
 
   // application
   val lrng      = LazyModule(new APB4RNG     (AddrSpace(0x10300000, 0x10)))
@@ -86,7 +87,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   // homework
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
-  //val lvga      = Some(LazyModule(new APBVGA     (AddrSpace(0x21000000, 0x200000))))
 
   // val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
   val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xC0000000L, 0x2000000)))
@@ -99,6 +99,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
        lpsram,
        lrcu
   ).map(_.node := apbxbar)
+  lvga.apbSlaveNode := apbxbar
 
   if (Config.isDstage) {
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
@@ -121,6 +122,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   if (Config.hasChipLink) chiplinkNode.get := xbar
   if (Config.hasChipLink) chipMaster.get.clockNode := oldIPClockBroadcast
   xbar := cpu.masterNode
+  xbar := lvga.axiMasterNode
 
   luart0.clockNode.get := oldIPClockBroadcast
   lspi.clockNode.get   := oldIPClockBroadcast
@@ -234,9 +236,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     val uart1 = genAPB4DevIO("uart1", luart1)
     val spi   = genAPB4DevIO("spi", lspi)
     val sdram = genIO("sdram", sdramBundle)
-    //val gpio  = genSomeAPB4DevIO("gpio", lgpio)
+    val vga   = genIO("vga", lvga.module.vgaIO)
     val ps2   = genAPB4DevIO("ps2", lps2)
-    //val vga   = genSomeAPB4DevIO("vga", lvga)
 
     val gpio0 = genAPB4DevIO("gpio0", lgpio0)
     val gpio1 = genAPB4DevIO("gpio1_i", lgpio1)
@@ -342,7 +343,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       val gpio2 = chiselTypeOf(masic.gpio2)
 
       val spi  = chiselTypeOf(masic.spi)
-      //val vga = Some(chiselTypeOf(masic.vga.get))
+      val vga = chiselTypeOf(masic.vga)
       val core_sel = chiselTypeOf(masic.core_sel)
       val core_irq = chiselTypeOf(masic.core_irq)
 
@@ -384,7 +385,7 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
 
     externalPins.ps2 <> masic.ps2
 
-    //externalPins.vga.get <> masic.vga.get
+    externalPins.vga <> masic.vga
     externalPins.i2s <> masic.i2s
 
     externalPins.rcu <> masic.rcu
