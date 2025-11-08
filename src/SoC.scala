@@ -172,12 +172,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     lrtc.module.extra.rtc_rst_n_i := !reset.asBool
     lwdg.module.extra.rtc_clk_i := clock_half
 
-//    val i2c_io = li2c.module.extra
-//    val i2c_scl = IO(Analog(1.W))
-//    val i2c_sda = IO(Analog(1.W))
-//    i2c_io.scl_i := TriStateInBuf(i2c_scl, i2c_io.scl_o, i2c_io.scl_dir_o)
-//    i2c_io.sda_i := TriStateInBuf(i2c_sda, i2c_io.sda_o, i2c_io.sda_dir_o)
-
     val i2s_io = li2s.module.extra
     val i2s_sck = IO(Analog(1.W))
     val i2s_ws  = IO(Analog(1.W))
@@ -196,8 +190,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     qspi_en_o := qspi_io.spi_io_en_o
     qspi_out_o := qspi_io.spi_io_out_o
     qspi_io.spi_io_in_i := qspi_in_i
-    //val qspi_dio  = IO(Vec(4, Analog(1.W)))
-    //qspi_io.spi_io_in_i := Cat((0 to 3).map(i => TriStateInBuf(qspi_dio(i), qspi_io.spi_io_out_o(i), qspi_io.spi_io_en_o(i))).reverse)
 
     val psram_io = lpsram.module.extra
     val psram_sck = IO(Output(Bool()))
@@ -389,6 +381,5 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
     externalPins.i2s <> masic.i2s
 
     externalPins.rcu <> masic.rcu
-
   }
 }
