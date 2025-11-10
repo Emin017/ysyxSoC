@@ -48,22 +48,23 @@ class vgaChisel extends Module {
 
 class APBVGA(address: Seq[AddressSet])(implicit p: Parameters)
   extends APB4DevTemplate(address, new VGAIO)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra, _, _) => {
-  val mvga = Module(new vga_top_apb)
-  mvga.io.clock := outer.clock
-  mvga.io.reset := outer.reset
-  mvga.io.in <> in
-  extra <> mvga.io.vga
-})
+    val mvga = Module(new vga_top_apb)
+    mvga.io.clock := outer.clock
+    mvga.io.reset := outer.reset
+    mvga.io.in <> in
+    extra <> mvga.io.vga
+  })
 
 class VGAWrapper(address: Seq[AddressSet], idBits: Int)(implicit p: Parameters) extends LazyModule {
   val apbSlaveNode = APBSlaveNodeGenerator(address)
   val axiMasterNode = AXI4MasterNode(Seq(AXI4MasterPortParameters(
-      masters = Seq(AXI4MasterParameters(
-        name = "vga",
-        id   = IdRange(0, 1 << idBits - 1), // Use one bit to distinguish Device IDs
-        maxFlight = Some(1)
-      )))))
+    masters = Seq(AXI4MasterParameters(
+      name = "vga",
+      id = IdRange(0, 1 << idBits - 1), // Use one bit to distinguish Device IDs
+      maxFlight = Some(1)
+    )))))
   lazy val module = new Impl
+
   class Impl extends LazyModuleImp(this) {
     val (in, _) = apbSlaveNode.in(0)
     val (out, _) = axiMasterNode.out(0)
