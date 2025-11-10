@@ -54,7 +54,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lwdg      = LazyModule(new APB4WDG     (AddrSpace(0x10005000, 0x20)))
   val larchinfo = LazyModule(new APB4ArchInfo(AddrSpace(0x10006000, 0x10)))
 
-  val lrcu      = LazyModule(new APB4RCU     (AddrSpace(0x10002000, 0x1000)))
+  val lrcu      = LazyModule(new APB4RCU     (AddrSpace(0x10002000, 0x10)))
 
   // interface
   val lgpio0    = LazyModule(new APB4GPIO    (AddrSpace(0x10100000, 0x40)))
@@ -73,7 +73,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   // multimedia
   val lqspi     = LazyModule(new APB4QSPI    (AddrSpace(0x10200000, 0x20)))
   val li2s      = LazyModule(new APB4I2S     (AddrSpace(0x10201000, 0x20)))
-  val lvga      = LazyModule(new VGAWrapper  (AddrSpace(0x10202000, 0x1000), ChipLinkParam.idBits))
+  val lvga      = LazyModule(new VGAWrapper  (AddrSpace(0x10202000, 0x20), ChipLinkParam.idBits))
 
   // application
   val lrng      = LazyModule(new APB4RNG     (AddrSpace(0x10300000, 0x10)))
@@ -84,12 +84,11 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val lsdram_apb = if (!Config.sdramUseAXI) Some(LazyModule(new APBSDRAM (sdramAddressSet))) else None
   val lsdram_axi = if ( Config.sdramUseAXI) Some(LazyModule(new AXI4SDRAM(sdramAddressSet))) else None
 
+  val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xC0000000L, 0x1000000)))
+
   // homework
   val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
   val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
-
-  // val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xa0000000L, 0x400000)))
-  val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xC0000000L, 0x2000000)))
 
   List(lclint, lplic,
        lspi, luart0, lrtc, lwdg, larchinfo,
@@ -105,7 +104,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
   } else if (Config.hasHomeWork) {
     val xbar2 = AXI4Xbar()
-    // List(lpsram, lgpio, lkeyboard, lvga).map(_.get.node := apbxbar)
     List(lgpio, lkeyboard).map(_.get.node := apbxbar)
     apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
     val lmrom = LazyModule(new AXI4MROM(AddrSpace(0x20000000, 0x1000)))
@@ -171,13 +169,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     lrtc.module.extra.rtc_clk_i := clock_half
     lrtc.module.extra.rtc_rst_n_i := !reset.asBool
     lwdg.module.extra.rtc_clk_i := clock_half
-
-    val i2s_io = li2s.module.extra
-    val i2s_sck = IO(Analog(1.W))
-    val i2s_ws  = IO(Analog(1.W))
-    i2s_io.sck_i := TriStateInBuf(i2s_sck, i2s_io.sck_o, i2s_io.sck_en_o)
-    i2s_io.ws_i  := TriStateInBuf(i2s_ws, i2s_io.ws_o, i2s_io.ws_en_o)
-    i2s_io.sd_i := false.B
 
     val qspi_io = lqspi.module.extra
     val qspi_sck_o = IO(Output(Bool()))
