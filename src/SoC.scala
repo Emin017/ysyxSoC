@@ -119,8 +119,8 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   if (Config.hasChipLink) chiplinkNode.get := xbar
   if (Config.hasChipLink) chipMaster.get.clockNode := oldIPClockBroadcast
-  xbar := cpu.masterNode
-  xbar := lvga.axiMasterNode
+  xbar := AXI4Buffer() := cpu.masterNode
+  xbar := AXI4Buffer() := lvga.axiMasterNode
 
   luart0.clockNode.get := oldIPClockBroadcast
   lspi.clockNode.get   := oldIPClockBroadcast
