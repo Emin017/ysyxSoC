@@ -36,7 +36,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   val xbar = AXI4Xbar()
   val apbxbar = LazyModule(new APBFanout).node
   val cpu = LazyModule(new CPU(idBits = ChipLinkParam.idBits))
-  //val chipMaster = if (Config.hasChipLink) Some(LazyModule(new ChipLinkMaster)) else None
   val chipMaster = if (Config.hasChipLink) Some(LazyModule(new ChipLinkWrapper)) else None
   val chiplinkNode = if (Config.hasChipLink) Some(AXI4SlaveNodeGenerator(p(ExtBus), ChipLinkParam.allSpace)) else None
 
