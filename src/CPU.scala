@@ -13,11 +13,11 @@ object CPUAXI4BundleParameters {
   def apply() = AXI4BundleParameters(addrBits = 32, dataBits = 32, idBits = ChipLinkParam.idBits)
 }
 
-class core_wrapper extends BlackBox {
+class core_wrapper(coreSelBits: Int = 2) extends BlackBox {
   val io = IO(new Bundle {
     val clock = Input(Clock())
     val reset = Input(Reset())
-    val core_sel = Input(UInt(5.W))
+    val core_sel = Input(UInt(coreSelBits.W))
     val io_interrupt = if (!Config.isDstage) Some(Input(Bool())) else None
     val io_master = if (!Config.isDstage) Some(AXI4Bundle(CPUAXI4BundleParameters())) else None
     val io_slave = if (!Config.isDstage) Some(Flipped(AXI4Bundle(CPUAXI4BundleParameters()))) else None
@@ -26,7 +26,7 @@ class core_wrapper extends BlackBox {
   })
 }
 
-class CPU(idBits: Int)(implicit p: Parameters) extends LazyModule {
+class CPU(idBits: Int, coreSelBits: Int = 2)(implicit p: Parameters) extends LazyModule {
   val masterNode = AXI4MasterNode(p(ExtIn).map(params =>
     AXI4MasterPortParameters(
       masters = Seq(AXI4MasterParameters(
@@ -37,9 +37,9 @@ class CPU(idBits: Int)(implicit p: Parameters) extends LazyModule {
     val (io_master, _) = masterNode.out(0)
     val io_interrupt = IO(Input(Bool()))
     val io_slave = IO(Flipped(AXI4Bundle(CPUAXI4BundleParameters())))
-    val core_sel = IO(Input(UInt(5.W)))
+    val core_sel = IO(Input(UInt(coreSelBits.W)))
 
-    val cpu = Module(new core_wrapper)
+    val cpu = Module(new core_wrapper(coreSelBits))
     cpu.io.clock := clock
     cpu.io.reset := reset
     cpu.io.core_sel := core_sel
