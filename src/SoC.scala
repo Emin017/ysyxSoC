@@ -110,7 +110,12 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
     List(lmrom.node, sramNode).map(_ := xbar2)
     xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
   } else {
-    apbxbar := APBDelayer() := AXI4ToAPB() := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
+    val xbar2 = AXI4Xbar()
+    val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x80).head, false, true, 4, None, Nil, false)
+    sramNode := xbar2
+
+    xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
+    apbxbar := APBDelayer() := AXI4ToAPB() := xbar2
   }
 
   if (Config.sdramUseAXI && !Config.isDstage) lsdram_axi.get.node := ysyx.AXI4Delayer() := xbar
@@ -118,6 +123,7 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   if (Config.hasChipLink) chiplinkNode.get := xbar
   if (Config.hasChipLink) chipMaster.get.clockNode := oldIPClockBroadcast
+
   xbar := AXI4Buffer() := cpu.masterNode
   xbar := AXI4Buffer() := lvga.axiMasterNode
 
