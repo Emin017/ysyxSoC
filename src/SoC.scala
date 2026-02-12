@@ -85,9 +85,6 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
 
   val lpsram = LazyModule(new APBPSRAM(AddrSpace(0xC0000000L, 0x1000000)))
 
-  // homework
-  val lgpio     = if (Config.hasHomeWork) Some(LazyModule(new APBGPIO    (AddrSpace(0x10002000, 0x10)))) else None
-  val lkeyboard = if (Config.hasHomeWork) Some(LazyModule(new APBKeyboard(AddrSpace(0x10011000, 0x8)))) else None
 
   List(lclint, lplic,
        lspi, luart0, lrtc, lwdg, larchinfo,
@@ -99,24 +96,12 @@ class ysyxSoCASIC(implicit p: Parameters) extends LazyModule {
   ).map(_.node := apbxbar)
   lvga.apbSlaveNode := apbxbar
 
-  if (Config.isDstage) {
-    apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar
-  } else if (Config.hasHomeWork) {
-    val xbar2 = AXI4Xbar()
-    List(lgpio, lkeyboard).map(_.get.node := apbxbar)
-    apbxbar := APBDelayer() := AXI4ToAPB() := AXI4Buffer() := xbar2
-    val lmrom = LazyModule(new AXI4MROM(AddrSpace(0x20000000, 0x1000)))
-    val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x2000).head, false, true, 4, None, Nil, false)
-    List(lmrom.node, sramNode).map(_ := xbar2)
-    xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
-  } else {
-    val xbar2 = AXI4Xbar()
-    val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x80).head, false, true, 4, None, Nil, false)
-    sramNode := xbar2
+  val xbar2 = AXI4Xbar()
+  val sramNode = AXI4RAM(AddrSpace(0x02020000, 0x80).head, false, true, 4, None, Nil, false)
+  sramNode := xbar2
 
-    xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
-    apbxbar := APBDelayer() := AXI4ToAPB() := xbar2
-  }
+  xbar2 := AXI4UserYanker(Some(1)) := AXI4Fragmenter() := xbar
+  apbxbar := APBDelayer() := AXI4ToAPB() := xbar2
 
   if (Config.sdramUseAXI && !Config.isDstage) lsdram_axi.get.node := ysyx.AXI4Delayer() := xbar
   else                                        lsdram_apb.get.node := apbxbar
@@ -309,9 +294,6 @@ class ysyxSoCFull(implicit p: Parameters) extends LazyModule {
       bitrev.io.ss := masic.spi.ss(7)
       bitrev.io.ss := masic.spi.ss(1)
       masic.spi.miso := List(bitrev.io, flash.io).map(_.miso).reduce(_&&_)
-
-      // val sdram = Module(new sdramChisel)
-      // sdram.io <> masic.sdram
 
       val psramModel = Module(new ESPWrapper)
       psramModel.io <> masic.psram_io

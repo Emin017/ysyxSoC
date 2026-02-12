@@ -47,33 +47,6 @@ class sdram extends BlackBox {
   val io = IO(Flipped(new SDRAMIO))
 }
 
-/*
-class sdramChisel extends RawModule {
-  val io = IO(Flipped(new SDRAMIO))
-  val (rowWidth, colWidth, bankWidth) = (io.a.getWidth, 9, io.ba.getWidth)
-  val addrWidth = rowWidth + colWidth + bankWidth
-  withClock(io.clk.asClock) {
-    val mem = SyncReadMem(1 << addrWidth, Vec(2, UInt(8.W)))
-    val cmd = io.cs ## io.ras ## io.cas ## io.we
-    val rowReg = Mem(1 << bankWidth, UInt(rowWidth.W))
-    when (io.cke && (cmd === "b0011".U)) { rowReg(io.ba) := io.a } // active
-    val mode = RegEnable(io.a, io.cke && (cmd === "b0000".U)) // load mode register
-    def burstOP(start: Bool) = {
-      val word_remain = Reg(UInt(4.W))
-      val addr_s1 = Reg(UInt(addrWidth.W))
-      val inflight = (word_remain =/= 0.U)
-      word_remain := Mux(start, 1.U << mode(1, 0), Mux(inflight, word_remain - 1.U, 0.U))
-      addr_s1 := Mux(start, rowReg(io.ba) ## io.ba ## io.a(colWidth-1, 0), addr_s1 + inflight)
-      (inflight, addr_s1)
-    }
-    val (reading, raddr_s1) = burstOP(io.cke && (cmd === "b0101".U))
-    val (writing, waddr_s1) = burstOP(io.cke && (cmd === "b0100".U))
-    val di = TriStateInBuf(io.dq, Cat(mem(raddr_s1).reverse), RegNext(reading))
-    when (writing) { mem.write(waddr_s1, RegNext(di).asTypeOf(mem(0)), RegEnable(~io.dqm, true.B).asBools) }
-  }
-}
-*/
-
 class AXI4SDRAM(address: Seq[AddressSet])(implicit p: Parameters) extends LazyModule {
   val beatBytes = 4
   val node = AXI4SlaveNode(Seq(AXI4SlavePortParameters(

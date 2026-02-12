@@ -140,14 +140,6 @@ class psram_top_apb extends BlackBox {
   })
 }
 
-class psram extends BlackBox {
-  val io = IO(Flipped(new QSPIoldIO))
-}
-
-class psramChisel extends RawModule {
-  val io = IO(Flipped(new QSPIoldIO))
-  val di = TriStateInBuf(io.dio, 0.U, false.B) // change this if you need
-}
 
 class APBPSRAM(address: Seq[AddressSet])(implicit p: Parameters)
   extends APB4DevTemplate(address, new PSRAMQSPIBundle)((in: APBBundle, outer: LazyModuleImp, irq_o: Bool, extra, _, _) => {
